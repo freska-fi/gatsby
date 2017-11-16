@@ -11,18 +11,20 @@ const digest = str =>
 const typePrefix = `Contentful`
 const makeTypeName = type => _.upperFirst(_.camelCase(`${typePrefix} ${type}`))
 
-const getLocalizedField = ({ field, defaultLocale, locale }) => {
+const getLocalizedField = ({ field, defaultLocale, locale, fieldLocalized }) => {
   if (!_.isUndefined(field[locale.code])) {
     return field[locale.code]
   } else if (!_.isUndefined(field[locale.fallbackCode])) {
     return field[locale.fallbackCode]
+  } else if (!fieldLocalized) {
+    return field[defaultLocale]
   } else {
     return null
   }
 }
 
-const makeGetLocalizedField = ({ locale, defaultLocale }) => field =>
-  getLocalizedField({ field, locale, defaultLocale })
+const makeGetLocalizedField = ({ locale, defaultLocale }) => (field, fieldLocalized) =>
+  getLocalizedField({ field, fieldLocalized, locale, defaultLocale })
 
 exports.getLocalizedField = getLocalizedField
 
@@ -224,7 +226,11 @@ exports.createContentTypeNodes = ({
     // First create nodes for each of the entries of that content type
     const entryNodes = entries.map(entryItem => {
       // Get localized fields.
-      const entryItemFields = _.mapValues(entryItem.fields, v => getField(v))
+      const entryItemFields = _.mapValues(entryItem.fields, (v, k) => {
+        const fieldProps = contentTypeItem.fields.find(field => field.id === k);
+        const fieldLocalized = fieldProps.localized;
+        return getField(v, fieldLocalized)
+      })
 
       // Prefix any conflicting fields
       // https://github.com/gatsbyjs/gatsby/pull/1084#pullrequestreview-41662888
